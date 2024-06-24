@@ -4,11 +4,13 @@ from selenium.webdriver.firefox.service import Service
 from selenium.webdriver.firefox.options import Options
 import time
 import os
-import argparse
+from argparse import ArgumentParser
 import pandas as pd
 
 
-def OpenBrowser():
+
+
+def OpenBrowser(count, interval):
     """Set up webdriver."""
 
     options = Options()
@@ -22,7 +24,8 @@ def OpenBrowser():
     options.set_preference("browser.download.dir", f'{directory}/Sat_csv/')
     options.set_preference("browser.helperApps.neverAsk.saveToDisk", "application/x-gzip")
 
-    options.add_argument('--headless')
+    if args.headless == True:
+        options.add_argument('--headless')
 
     geckodriver_path = "/snap/bin/geckodriver"  # specify the path to your geckodriver
     driver_service = Service(executable_path=geckodriver_path)
@@ -52,13 +55,14 @@ def OpenBrowser():
 
     start = time.time()
 
-    download = True
-    while download:
-        if time.time()- start > 300:
+    downloaded = 0
+    while downloaded < count:
+        if time.time()- start > interval:
             download_data(browser)
-            concat_csv('Sat_csv')
+            downloaded += 1
             start = time.time()
-    
+            
+    concat_csv('Sat_csv')
 
 
 def download_data(browser):
@@ -84,12 +88,18 @@ def concat_csv(dl_path):
     combined_csv.to_csv(f'combined.csv')
 
 
-        
+parser = ArgumentParser(prog = 'SatDL', description='Download Satellite positional data from the satellitemap.space')
+parser.add_argument('--count', type = int, help ='Number of times data is downloaded from the website',default=10)       
+parser.add_argument('--interval', type = int, help ='Time between downloads, measured in seconds', default=300)
+parser.add_argument('--headless', type = bool, default=True, help = 'Toggle headless option for selenium')
 
+args = parser.parse_args()
 try: 
     os.mkdir('Sat_csv')
 except:
     print('Download folder exists')
 
-OpenBrowser()
+OpenBrowser(args.count,args.interval)
+
+os.rmdir('Sat_csv')
 
